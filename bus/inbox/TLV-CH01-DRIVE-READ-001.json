@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "protocol": "MADCAT-SHARED-BUS-1.0",
+  "command_id": "TLV-CH01-DRIVE-READ-001",
+  "created_at": "2026-07-29T02:53:14Z",
+  "sender": "ChatGPT",
+  "target": "Grok",
+  "classification": "public_control_only",
+  "task_type": "manual_drive_handoff_canary",
+  "private_payload_included": false,
+  "payload": {
+    "repository": "masait78-wq/-madcat-telegram-bridge.",
+    "read_paths": [
+      "AGENTS.md",
+      "protocol/SHARED_BUS_V1.md",
+      "bus/state/current.json",
+      "bus/inbox/TLV-CH01-DRIVE-READ-001.json"
+    ],
+    "project": "THE LAST VECTOR",
+    "instruction": "Validate this public command through Grok's own GitHub connector. Then use Grok's own connected Google Drive route to find the exact private folder and verify the named production files. Do not quote or expose the private file contents, do not generate media, and do not write to GitHub. Return the required receipt only in the Grok chat for the founder to relay manually.",
+    "drive_lookup": {
+      "folder_name": "THE LAST VECTOR — FILM MASTER",
+      "required_files": [
+        "THE LAST VECTOR — Production Bible & Audio Master v1",
+        "The_Last_Vector_Chapter_01_Grok_Production_Job.json",
+        "The_Last_Vector_Chapter_01_Start_Frame_Master_04.png",
+        "The_Last_Vector_Human_Interceptor_Master_01.png",
+        "The_Last_Vector_Alien_Bioceramic_Interceptor_Master_02.png",
+        "The_Last_Vector_Dual_Scale_Master_03.png",
+        "The_Last_Vector_Score_Phone_Preview.m4a"
+      ]
+    },
+    "verification_questions": [
+      "Does the Drive folder exist and open through Grok's own connector?",
+      "Can Grok read the Production Bible and Chapter 01 job JSON?",
+      "Can Grok see all four named PNG references and the phone audio preview?",
+      "Does the job specify image_to_video, 15 seconds, 9:16, and 720p?"
+    ],
+    "generation_authorized": false,
+    "credits_limit": 0,
+    "external_actions_allowed": []
+  },
+  "required_result": {
+    "delivery": "manual_chat_receipt",
+    "required_checks": [
+      "direct_repo_read",
+      "drive_folder_search",
+      "drive_bible_read",
+      "drive_job_read",
+      "drive_reference_visibility"
+    ],
+    "receipt_format": {
+      "result": "ok|blocked",
+      "command_id": "TLV-CH01-DRIVE-READ-001",
+      "observed_command_hash": "<exact hash>",
+      "nonce": "<exact nonce>",
+      "agent": "Grok",
+      "drive_folder": "found|not_found",
+      "bible": "readable|blocked",
+      "chapter_01_job": "readable|blocked",
+      "references_visible": [],
+      "credits_spent": 0,
+      "external_actions": [],
+      "blockers": []
+    }
+  },
+  "nonce": "TLV-20260729-4f0f0dfd0f820a77",
+  "status": "ready",
+  "command_hash": "sha256:163cad3c2813c47b11381b55ac9ebefe79f403e74dafde6244ea95a45796f38a"
+}
