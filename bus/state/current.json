@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "protocol": "MADCAT-SHARED-BUS-1.0",
-  "active_command": "TLV-CH01-RENDER-001",
-  "active_command_hash": "sha256:294c31692402303ce28546ee9b64ab8440df5da3eab6e68fc18434e3dc08f648",
-  "status": "ready",
-  "next": "Grok validates the active command, checks live SuperGrok usage, and if the approved 15-second 9:16 720p route is available inside the existing allowance, generates exactly one private Chapter 1 video and returns the required receipt without publication or extra purchase."
+  "active_command": "STUDIO-VIDEO-PAUSE-001",
+  "active_command_hash": "sha256:5c548a7b49cdfb9847937856d9e44e5334b318456bacfad85379452eefc69a21",
+  "status": "paused",
+  "next": "All MadCat Studio video generation, extension, rerender, and publication work is paused. Do nothing until the founder issues a fresh exact command with a new hash and nonce."
 }
