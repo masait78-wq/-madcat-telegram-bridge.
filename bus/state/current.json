@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "protocol": "MADCAT-SHARED-BUS-1.0",
-  "active_command": "TLV-CH01-DRIVE-READ-001",
-  "active_command_hash": "sha256:163cad3c2813c47b11381b55ac9ebefe79f403e74dafde6244ea95a45796f38a",
+  "active_command": "TLV-CH01-RENDER-001",
+  "active_command_hash": "sha256:294c31692402303ce28546ee9b64ab8440df5da3eab6e68fc18434e3dc08f648",
   "status": "ready",
-  "next": "Grok reads the active command, verifies the private Drive production package through its own connectors, and returns the exact receipt in the Grok chat without generating media."
+  "next": "Grok validates the active command, checks live SuperGrok usage, and if the approved 15-second 9:16 720p route is available inside the existing allowance, generates exactly one private Chapter 1 video and returns the required receipt without publication or extra purchase."
 }
