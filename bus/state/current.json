@@ -3,6 +3,6 @@
   "protocol": "MADCAT-SHARED-BUS-1.0",
   "active_command": "TLV-CH01-RENDER-001",
   "active_command_hash": "sha256:294c31692402303ce28546ee9b64ab8440df5da3eab6e68fc18434e3dc08f648",
-  "status": "ready",
-  "next": "Grok validates the active command, checks live SuperGrok usage, and if the approved 15-second 9:16 720p route is available inside the existing allowance, generates exactly one private Chapter 1 video and returns the required receipt without publication or extra purchase."
+  "status": "paused",
+  "next": "No engine acts on this command while paused. Resume only through a later founder-approved command envelope and a fresh live usage check; no credits, generation, publication, or external action is authorized."
 }
