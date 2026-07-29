@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "protocol": "MADCAT-SHARED-BUS-1.0",
+  "command_id": "TLV-CH01-RENDER-001",
+  "created_at": "2026-07-29T03:11:35Z",
+  "sender": "ChatGPT",
+  "target": "Grok",
+  "classification": "public_control_only",
+  "task_type": "approved_single_supergrok_render",
+  "private_payload_included": false,
+  "payload": {
+    "repository": "masait78-wq/-madcat-telegram-bridge.",
+    "read_paths": [
+      "AGENTS.md",
+      "protocol/SHARED_BUS_V1.md",
+      "bus/state/current.json",
+      "bus/inbox/TLV-CH01-RENDER-001.json"
+    ],
+    "project": "THE LAST VECTOR",
+    "drive_lookup": {
+      "folder_name": "THE LAST VECTOR — FILM MASTER",
+      "production_bible": "THE LAST VECTOR — Production Bible & Audio Master v1",
+      "job_file": "The_Last_Vector_Chapter_01_Grok_Production_Job.json",
+      "starting_image": "The_Last_Vector_Chapter_01_Start_Frame_Master_04.png"
+    },
+    "instruction": "Validate this command through Grok's own GitHub connector. Through Grok's own connected Drive route, open the exact private project folder, production bible, Chapter 1 job JSON, and starting image. Do not quote or expose private contents. Before generation, check the live SuperGrok Settings > Usage state. Proceed only if one 15-second 9:16 720p image-to-video generation is available inside the existing allowance without Auto Top Up, Extra Usage Credits, a separate API charge, or a 480p fallback. If that preflight passes, use exactly the named starting image as frame zero, execute the exact Chapter 1 job as the motion, physics, camera, lighting, timing, native-audio, mix, end-state, and negative-constraint contract, and generate exactly one private video. Keep the Grok watermark and provenance intact. Attach the result in the Grok chat or return its native private output reference. Do not publish, message, write to GitHub, change permissions, make a purchase, or generate a second variant. If any preflight condition or execution surface is unavailable, stop before generation and return the blocked receipt.",
+    "approval": {
+      "render_approved": true,
+      "approval_phrase": "Поехали",
+      "approved_at": "2026-07-29T03:11:35Z",
+      "generation_limit": 1,
+      "publication_approved": false,
+      "auto_top_up_approved": false,
+      "extra_usage_purchase_approved": false,
+      "separate_api_billing_approved": false
+    },
+    "render_contract": {
+      "mode": "image_to_video",
+      "model_route": "grok-imagine-video-1.5",
+      "duration_seconds": 15,
+      "aspect_ratio": "9:16",
+      "resolution": "720p",
+      "source_count": 1,
+      "native_audio": true,
+      "dialogue": false,
+      "generation_count_limit": 1
+    },
+    "credits_limit": 1,
+    "external_actions_allowed": [
+      "check_private_supergrok_usage",
+      "generate_one_private_supergrok_video",
+      "attach_private_result_in_current_grok_chat"
+    ]
+  },
+  "required_result": {
+    "delivery": "manual_chat_receipt_with_video_or_private_output_reference",
+    "required_checks": [
+      "direct_repo_read",
+      "command_hash_and_nonce",
+      "drive_job_read",
+      "live_usage_check",
+      "exact_source_lock",
+      "single_generation_limit",
+      "actual_format",
+      "private_delivery_only",
+      "no_extra_purchase",
+      "no_publication"
+    ],
+    "receipt_format": {
+      "result": "completed|blocked",
+      "command_id": "TLV-CH01-RENDER-001",
+      "observed_command_hash": "<exact hash>",
+      "nonce": "<exact nonce>",
+      "agent": "Grok",
+      "usage_check": {
+        "checked": true,
+        "allowance_sufficient": "true|false",
+        "requested_resolution_available": "720p|fallback|unknown",
+        "extra_purchase_used": false
+      },
+      "render": {
+        "executed": "true|false",
+        "generation_count": "1|0",
+        "mode": "image_to_video",
+        "duration_seconds": "15|0",
+        "aspect_ratio": "9:16|unknown",
+        "requested_resolution": "720p",
+        "actual_resolution": "720p|480p|unknown",
+        "source_file": "The_Last_Vector_Chapter_01_Start_Frame_Master_04.png",
+        "job_file": "The_Last_Vector_Chapter_01_Grok_Production_Job.json",
+        "native_audio": "true|false",
+        "output_attached": "true|false",
+        "output_reference": "<private reference or null>"
+      },
+      "credits_spent": "1|0",
+      "monetary_charge": 0,
+      "external_actions": [],
+      "blockers": []
+    }
+  },
+  "nonce": "TLV-RENDER-20260729-099501768de0c752",
+  "status": "ready",
+  "command_hash": "sha256:294c31692402303ce28546ee9b64ab8440df5da3eab6e68fc18434e3dc08f648"
+}
