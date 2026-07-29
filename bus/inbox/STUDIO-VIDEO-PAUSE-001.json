@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "protocol": "MADCAT-SHARED-BUS-1.0",
+  "command_id": "STUDIO-VIDEO-PAUSE-001",
+  "created_at": "2026-07-29T06:31:22Z",
+  "sender": "ChatGPT",
+  "target": "Grok",
+  "classification": "public_control_only",
+  "task_type": "founder_video_generation_pause",
+  "private_payload_included": false,
+  "payload": {
+    "repository": "masait78-wq/-madcat-telegram-bridge.",
+    "supersedes_command_id": "TLV-CH01-RENDER-001",
+    "scope": "All pending MadCat Studio video generation, extension, rerender, and publication work",
+    "instruction": "The founder paused the video workflow. Do not execute or resume TLV-CH01-RENDER-001, do not extend an existing video, and do not start any other video generation. Spend zero credits, make zero purchases, publish nothing, and wait for a fresh command with a new hash, nonce, and exact founder approval.",
+    "generation_authorized": false,
+    "credits_limit": 0,
+    "external_actions_allowed": []
+  },
+  "required_result": {
+    "delivery": "manual_chat_receipt",
+    "required_checks": [
+      "command_hash_and_nonce",
+      "no_generation",
+      "no_extension",
+      "no_credit_spend",
+      "no_purchase",
+      "no_publication"
+    ],
+    "receipt_format": {
+      "result": "completed|blocked",
+      "command_id": "STUDIO-VIDEO-PAUSE-001",
+      "observed_command_hash": "<exact hash>",
+      "nonce": "<exact nonce>",
+      "agent": "Grok",
+      "video_generation_paused": true,
+      "credits_spent": 0,
+      "external_actions": [],
+      "blockers": []
+    }
+  },
+  "nonce": "STUDIO-PAUSE-20260729-69f7bfe324b626a7",
+  "status": "ready",
+  "command_hash": "sha256:5c548a7b49cdfb9847937856d9e44e5334b318456bacfad85379452eefc69a21"
+}
