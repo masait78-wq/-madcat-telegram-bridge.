@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "protocol": "MADCAT-SHARED-BUS-1.0",
-  "active_command": "MC-BUS-CANARY-001",
-  "active_command_hash": "sha256:0b6e194872b1afe3ae11ada26db7d4252b237e6d1c2e5423e108b3f057af8d81",
+  "active_command": "TLV-CH01-DRIVE-READ-001",
+  "active_command_hash": "sha256:163cad3c2813c47b11381b55ac9ebefe79f403e74dafde6244ea95a45796f38a",
   "status": "ready",
-  "next": "Grok reads the active command through its own GitHub connector and writes the required receipt."
+  "next": "Grok reads the active command, verifies the private Drive production package through its own connectors, and returns the exact receipt in the Grok chat without generating media."
 }
