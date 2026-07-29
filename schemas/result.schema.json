@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://madcat.studio/schemas/shared-bus-result.schema.json",
+  "title": "MadCat shared bus result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "protocol",
+    "result_id",
+    "command_id",
+    "completed_at",
+    "agent",
+    "status",
+    "observed_command_hash",
+    "nonce",
+    "summary",
+    "checks",
+    "external_actions",
+    "credits_spent",
+    "result_hash"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "protocol": {"const": "MADCAT-SHARED-BUS-1.0"},
+    "result_id": {"type": "string", "pattern": "^[A-Z0-9-]+$"},
+    "command_id": {"type": "string", "pattern": "^[A-Z0-9-]+$"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "agent": {"const": "Grok"},
+    "status": {"enum": ["completed", "partial", "blocked"]},
+    "observed_command_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "nonce": {"type": "string", "minLength": 16},
+    "summary": {"type": "string", "minLength": 1},
+    "checks": {"type": "array"},
+    "external_actions": {"type": "array"},
+    "credits_spent": {"type": "number", "minimum": 0},
+    "result_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

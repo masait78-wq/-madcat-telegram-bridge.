@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "protocol": "MADCAT-SHARED-BUS-1.0",
+  "active_command": "MC-BUS-CANARY-001",
+  "active_command_hash": "sha256:0b6e194872b1afe3ae11ada26db7d4252b237e6d1c2e5423e108b3f057af8d81",
+  "status": "ready",
+  "next": "Grok reads the active command through its own GitHub connector and writes the required receipt."
+}

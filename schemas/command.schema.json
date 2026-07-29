@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://madcat.studio/schemas/shared-bus-command.schema.json",
+  "title": "MadCat shared bus command",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "protocol",
+    "command_id",
+    "created_at",
+    "sender",
+    "target",
+    "classification",
+    "task_type",
+    "private_payload_included",
+    "payload",
+    "required_result",
+    "nonce",
+    "status",
+    "command_hash"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "protocol": {"const": "MADCAT-SHARED-BUS-1.0"},
+    "command_id": {"type": "string", "pattern": "^[A-Z0-9-]+$"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "sender": {"const": "ChatGPT"},
+    "target": {"const": "Grok"},
+    "classification": {"const": "public_control_only"},
+    "task_type": {"type": "string", "minLength": 1},
+    "private_payload_included": {"const": false},
+    "payload": {"type": "object"},
+    "required_result": {"type": "object"},
+    "nonce": {"type": "string", "minLength": 16},
+    "status": {"enum": ["ready", "cancelled", "completed"]},
+    "command_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}
