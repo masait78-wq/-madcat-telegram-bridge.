@@ -77,16 +77,23 @@ class SharedBusValidationTests(unittest.TestCase):
         )
         self.assertEqual(VALIDATOR.credential_findings(safe_text), [])
 
-    def test_entropy_scanner_ignores_typed_drive_identifier(self) -> None:
+    def test_entropy_scanner_ignores_typed_public_identifiers(self) -> None:
         drive_id = (
             "1lG__urF-drQL"
             + "RzWujP9wMUhP"
             + "QVYRQPoeJP746dt4g0Q"
         )
+        site_id = "appgprj_" + "6a58757f52bc8191a8866f420a3c86ab"
         safe_text = (
-            '{"kind": "drive_doc", "id": "'
+            '{"kind": "drive_folder", "id": "'
             + drive_id
-            + '", "title": "Public reference"}'
+            + '", "title": "Public reference"}\n'
+            + '{"kind": "site_project", "id": "'
+            + site_id
+            + '", "title": "Public project"}\n'
+            + '"location": "drive_folder:'
+            + drive_id
+            + '"'
         )
         self.assertEqual(VALIDATOR.credential_findings(safe_text), [])
 
