@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -55,22 +56,56 @@ STATE_FIELDS = {
     "status",
     "next",
 }
-FORBIDDEN_KEYS = {
-    "api_key",
+FORBIDDEN_KEY_NAMES = {
+    "accesskey",
+    "accesstoken",
+    "apikey",
     "authorization",
+    "bearer",
+    "clientsecret",
     "cookie",
+    "credential",
     "credentials",
+    "passphrase",
     "password",
-    "payment_card",
-    "private_key",
+    "paymentcard",
+    "privatekey",
+    "refreshtoken",
     "secret",
-    "session_token",
+    "sessiontoken",
+    "signingkey",
     "token",
+    "webhooksecret",
 }
-SECRET_PATTERNS = (
-    re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
-    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}\b"),
-    re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
+PROVIDER_SECRET_PATTERNS = (
+    (
+        "private-key",
+        re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
+    ),
+    ("github", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}\b")),
+    ("openai-or-xai", re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b")),
+    ("stripe", re.compile(r"\b(?:sk|rk)_live_[A-Za-z0-9]{16,}\b")),
+    ("aws", re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")),
+    ("google", re.compile(r"\bAIza[0-9A-Za-z_-]{30,}\b")),
+    ("telegram", re.compile(r"\b\d{6,12}:[A-Za-z0-9_-]{30,}\b")),
+    ("slack", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{20,}\b")),
+    ("npm", re.compile(r"\bnpm_[A-Za-z0-9]{30,}\b")),
+    ("gitlab", re.compile(r"\bglpat-[A-Za-z0-9_-]{20,}\b")),
+)
+ENTROPY_TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9])[A-Za-z0-9_+/=.:~-]{24,}(?![A-Za-z0-9])"
+)
+MIN_ENTROPY = 4.4
+PUBLIC_IDENTIFIER_KINDS = {
+    "drive_doc",
+    "drive_file",
+    "drive_folder",
+    "site_project",
+}
+PUBLIC_IDENTIFIER_PREFIXES = (
+    "drive_file:",
+    "drive_folder:",
+    "site_project:",
 )
 ALLOWED_SUFFIXES = {".json", ".md", ".py", ".yml", ".yaml"}
 ALLOWED_FILENAMES = {"requirements.txt"}
@@ -108,18 +143,80 @@ def schema_errors(value: dict[str, Any], schema_path: Path, label: str) -> list[
     ]
 
 
+def normalized_key(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", value.lower())
+
+
 def forbidden_key_paths(value: Any, prefix: str = "$") -> list[str]:
     found: list[str] = []
     if isinstance(value, dict):
         for key, item in value.items():
             key_path = f"{prefix}.{key}"
-            if key.lower() in FORBIDDEN_KEYS:
+            if normalized_key(key) in FORBIDDEN_KEY_NAMES:
                 found.append(key_path)
             found.extend(forbidden_key_paths(item, key_path))
     elif isinstance(value, list):
         for index, item in enumerate(value):
             found.extend(forbidden_key_paths(item, f"{prefix}[{index}]"))
     return found
+
+
+def shannon_entropy(value: str) -> float:
+    if not value:
+        return 0.0
+    return -sum(
+        (value.count(character) / len(value))
+        * math.log2(value.count(character) / len(value))
+        for character in set(value)
+    )
+
+
+def character_class_count(value: str) -> int:
+    return sum(
+        (
+            any(character.islower() for character in value),
+            any(character.isupper() for character in value),
+            any(character.isdigit() for character in value),
+            any(character in "_+/=.:~-" for character in value),
+        )
+    )
+
+
+def credential_findings(text: str) -> list[str]:
+    """Return non-secret finding labels; never echo candidate material."""
+    findings: set[str] = set()
+    for provider, pattern in PROVIDER_SECRET_PATTERNS:
+        for match in pattern.finditer(text):
+            line = text.count("\n", 0, match.start()) + 1
+            findings.add(f"provider:{provider}:line:{line}")
+    for match in ENTROPY_TOKEN_RE.finditer(text):
+        candidate = match.group(0)
+        preceding_context = text[max(0, match.start() - 200) : match.start()]
+        if (
+            "/" in candidate
+            or "://" in candidate
+            or not any(character.isdigit() for character in candidate)
+            or candidate.startswith("sha256:")
+        ):
+            continue
+        if candidate.startswith(PUBLIC_IDENTIFIER_PREFIXES):
+            continue
+        public_kind_pattern = "|".join(sorted(PUBLIC_IDENTIFIER_KINDS))
+        if (
+            re.search(
+                rf'"kind"\s*:\s*"(?:{public_kind_pattern})"',
+                preceding_context,
+            )
+            and re.search(r'"id"\s*:\s*"\s*$', preceding_context)
+        ):
+            continue
+        if (
+            character_class_count(candidate) >= 3
+            and shannon_entropy(candidate) >= MIN_ENTROPY
+        ):
+            line = text.count("\n", 0, match.start()) + 1
+            findings.add(f"high-entropy:line:{line}")
+    return sorted(findings)
 
 
 def validate_repository(root: Path = ROOT) -> list[str]:
@@ -243,9 +340,10 @@ def validate_repository(root: Path = ROOT) -> list[str]:
         except UnicodeDecodeError:
             errors.append(f"{path.relative_to(root)}: non-text content is forbidden")
             continue
-        for pattern in SECRET_PATTERNS:
-            if pattern.search(text):
-                errors.append(f"{path.relative_to(root)}: possible credential material")
+        for finding in credential_findings(text):
+            errors.append(
+                f"{path.relative_to(root)}: possible credential material ({finding})"
+            )
 
     return errors
 
