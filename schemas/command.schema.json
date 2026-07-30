@@ -24,7 +24,11 @@
     "schema_version": {"const": 1},
     "protocol": {"const": "MADCAT-SHARED-BUS-1.0"},
     "command_id": {"type": "string", "pattern": "^[A-Z0-9-]+$"},
-    "created_at": {"type": "string", "format": "date-time"},
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
     "sender": {"const": "ChatGPT"},
     "target": {"const": "Grok"},
     "classification": {"const": "public_control_only"},
