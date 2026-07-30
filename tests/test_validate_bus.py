@@ -36,6 +36,40 @@ class SharedBusValidationTests(unittest.TestCase):
             ["$.nested[0].token"],
         )
 
+    def test_command_schema_rejects_untrusted_sender(self) -> None:
+        command = VALIDATOR.load_json(
+            ROOT / "bus" / "inbox" / "MC-BUS-CANARY-001.json"
+        )
+        command["sender"] = "UnknownAgent"
+        errors = VALIDATOR.schema_errors(
+            command,
+            ROOT / "schemas" / "command.schema.json",
+            "command",
+        )
+        self.assertTrue(any("sender" in error for error in errors))
+
+    def test_command_schema_rejects_naive_timestamp(self) -> None:
+        command = VALIDATOR.load_json(
+            ROOT / "bus" / "inbox" / "MC-BUS-CANARY-001.json"
+        )
+        command["created_at"] = "2026-07-29T01:54:56"
+        errors = VALIDATOR.schema_errors(
+            command,
+            ROOT / "schemas" / "command.schema.json",
+            "command",
+        )
+        self.assertTrue(any("created_at" in error for error in errors))
+
+    def test_state_schema_rejects_unknown_status(self) -> None:
+        state = VALIDATOR.load_json(ROOT / "bus" / "state" / "current.json")
+        state["status"] = "looks_good"
+        errors = VALIDATOR.schema_errors(
+            state,
+            ROOT / "schemas" / "state.schema.json",
+            "state",
+        )
+        self.assertTrue(any("status" in error for error in errors))
+
 
 if __name__ == "__main__":
     unittest.main()
