@@ -36,6 +36,60 @@ class SharedBusValidationTests(unittest.TestCase):
             ["$.nested[0].token"],
         )
 
+    def test_secret_key_detection_normalizes_case_and_separators(self) -> None:
+        self.assertEqual(
+            VALIDATOR.forbidden_key_paths(
+                {
+                    "Api-Key": "redacted",
+                    "nested": {
+                        "clientSecret": "redacted",
+                        "SESSION_TOKEN": "redacted",
+                    },
+                }
+            ),
+            ["$.Api-Key", "$.nested.clientSecret", "$.nested.SESSION_TOKEN"],
+        )
+
+    def test_provider_patterns_cover_aws_and_slack(self) -> None:
+        aws = "AK" + "IA0123456789ABCDEF"
+        slack = "xox" + "b-123456789012-" + "abcdefghijklmnopqrstuvwx"
+        findings = VALIDATOR.credential_findings(f"{aws}\n{slack}")
+        self.assertTrue(any("provider:aws" in finding for finding in findings))
+        self.assertTrue(any("provider:slack" in finding for finding in findings))
+
+    def test_entropy_scanner_flags_opaque_candidate(self) -> None:
+        opaque = (
+            "Q2ZvbjM1dHdQ"
+            + "OVJhbmRvbVNl"
+            + "Y3JldFZhbHVl"
+            + "MTIzNDU2"
+        )
+        findings = VALIDATOR.credential_findings(opaque)
+        self.assertTrue(
+            any("high-entropy" in finding for finding in findings)
+        )
+
+    def test_entropy_scanner_ignores_hash_and_public_nonce(self) -> None:
+        safe_text = (
+            "sha256:"
+            + ("a1" * 32)
+            + "\nMCBUS-20260729-1edbecd55d995f81"
+        )
+        self.assertEqual(VALIDATOR.credential_findings(safe_text), [])
+
+    def test_entropy_scanner_ignores_typed_drive_identifier(self) -> None:
+        drive_id = (
+            "1lG__urF-drQL"
+            + "RzWujP9wMUhP"
+            + "QVYRQPoeJP746dt4g0Q"
+        )
+        safe_text = (
+            '{"kind": "drive_doc", "id": "'
+            + drive_id
+            + '", "title": "Public reference"}'
+        )
+        self.assertEqual(VALIDATOR.credential_findings(safe_text), [])
+
     def test_command_schema_rejects_untrusted_sender(self) -> None:
         command = VALIDATOR.load_json(
             ROOT / "bus" / "inbox" / "MC-BUS-CANARY-001.json"
