@@ -10,6 +10,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from jsonschema import Draft202012Validator, FormatChecker
+
 
 ROOT = Path(__file__).resolve().parents[1]
 HASH_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -71,6 +73,7 @@ SECRET_PATTERNS = (
     re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
 )
 ALLOWED_SUFFIXES = {".json", ".md", ".py", ".yml", ".yaml"}
+ALLOWED_FILENAMES = {"requirements.txt"}
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -90,6 +93,19 @@ def canonical_hash(value: dict[str, Any], hash_field: str) -> str:
         sort_keys=True,
     ).encode("utf-8")
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
+def schema_errors(value: dict[str, Any], schema_path: Path, label: str) -> list[str]:
+    schema = load_json(schema_path)
+    Draft202012Validator.check_schema(schema)
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    return [
+        f"{label}: schema violation at {'.'.join(str(part) for part in error.absolute_path) or '$'}: {error.message}"
+        for error in sorted(
+            validator.iter_errors(value),
+            key=lambda item: tuple(str(part) for part in item.absolute_path),
+        )
+    ]
 
 
 def forbidden_key_paths(value: Any, prefix: str = "$") -> list[str]:
@@ -117,6 +133,16 @@ def validate_repository(root: Path = ROOT) -> list[str]:
         except (OSError, json.JSONDecodeError, ValueError) as exc:
             errors.append(f"{relative}: {exc}")
             continue
+        try:
+            errors.extend(
+                schema_errors(
+                    command,
+                    root / "schemas" / "command.schema.json",
+                    str(relative),
+                )
+            )
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            errors.append(f"{relative}: schema validation unavailable: {exc}")
         command_id = command.get("command_id", path.stem)
         commands[command_id] = command
         if set(command) != COMMAND_FIELDS:
@@ -144,6 +170,16 @@ def validate_repository(root: Path = ROOT) -> list[str]:
         except (OSError, json.JSONDecodeError, ValueError) as exc:
             errors.append(f"{relative}: {exc}")
             continue
+        try:
+            errors.extend(
+                schema_errors(
+                    result,
+                    root / "schemas" / "result.schema.json",
+                    str(relative),
+                )
+            )
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            errors.append(f"{relative}: schema validation unavailable: {exc}")
         command = commands.get(result.get("command_id"))
         if set(result) != RESULT_FIELDS:
             errors.append(f"{relative}: result fields do not match the protocol")
@@ -170,6 +206,16 @@ def validate_repository(root: Path = ROOT) -> list[str]:
     except (OSError, json.JSONDecodeError, ValueError) as exc:
         errors.append(f"bus/state/current.json: {exc}")
         state = {}
+    try:
+        errors.extend(
+            schema_errors(
+                state,
+                root / "schemas" / "state.schema.json",
+                "bus/state/current.json",
+            )
+        )
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        errors.append(f"bus/state/current.json: schema validation unavailable: {exc}")
     if set(state) != STATE_FIELDS:
         errors.append("bus/state/current.json: fields do not match the protocol")
     active = commands.get(state.get("active_command"))
@@ -186,7 +232,10 @@ def validate_repository(root: Path = ROOT) -> list[str]:
             or path.suffix == ".pyc"
         ):
             continue
-        if path.suffix.lower() not in ALLOWED_SUFFIXES:
+        if (
+            path.suffix.lower() not in ALLOWED_SUFFIXES
+            and path.name not in ALLOWED_FILENAMES
+        ):
             errors.append(f"{path.relative_to(root)}: unsupported public-bus file type")
             continue
         try:

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://madcat.studio/schemas/shared-bus-state.schema.json",
+  "title": "MadCat shared bus state pointer",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "protocol",
+    "active_command",
+    "active_command_hash",
+    "status",
+    "next"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "protocol": {
+      "const": "MADCAT-SHARED-BUS-1.0"
+    },
+    "active_command": {
+      "type": "string",
+      "pattern": "^[A-Z0-9-]+$"
+    },
+    "active_command_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "status": {
+      "enum": [
+        "ready",
+        "paused",
+        "completed",
+        "blocked"
+      ]
+    },
+    "next": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
