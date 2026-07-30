@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://madcat.studio/schemas/shared-bus-signer-registry.schema.json",
+  "title": "MadCat shared bus trusted receipt signers",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "registry_id",
+    "repository",
+    "algorithm",
+    "keys",
+    "truth_boundary"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "registry_id": {"const": "MADCAT-RECEIPT-SIGNERS-1"},
+    "repository": {"const": "masait78-wq/-madcat-telegram-bridge."},
+    "algorithm": {"const": "Ed25519"},
+    "keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key_id",
+          "principal",
+          "public_key",
+          "public_key_sha256",
+          "status",
+          "valid_from",
+          "valid_until",
+          "revoked_at"
+        ],
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{2,63}$"
+          },
+          "principal": {"const": "Grok"},
+          "public_key": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "public_key_sha256": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "status": {"enum": ["active", "revoked"]},
+          "valid_from": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "(Z|[+-][0-9]{2}:[0-9]{2})$"
+          },
+          "valid_until": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "(Z|[+-][0-9]{2}:[0-9]{2})$"
+              },
+              {"type": "null"}
+            ]
+          },
+          "revoked_at": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "(Z|[+-][0-9]{2}:[0-9]{2})$"
+              },
+              {"type": "null"}
+            ]
+          }
+        }
+      }
+    },
+    "truth_boundary": {"type": "string", "minLength": 1}
+  }
+}
