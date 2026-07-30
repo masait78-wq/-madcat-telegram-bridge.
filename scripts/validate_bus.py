@@ -96,6 +96,17 @@ ENTROPY_TOKEN_RE = re.compile(
     r"(?<![A-Za-z0-9])[A-Za-z0-9_+/=.:~-]{24,}(?![A-Za-z0-9])"
 )
 MIN_ENTROPY = 4.4
+PUBLIC_IDENTIFIER_KINDS = {
+    "drive_doc",
+    "drive_file",
+    "drive_folder",
+    "site_project",
+}
+PUBLIC_IDENTIFIER_PREFIXES = (
+    "drive_file:",
+    "drive_folder:",
+    "site_project:",
+)
 ALLOWED_SUFFIXES = {".json", ".md", ".py", ".yml", ".yaml"}
 ALLOWED_FILENAMES = {"requirements.txt"}
 
@@ -188,8 +199,14 @@ def credential_findings(text: str) -> list[str]:
             or candidate.startswith("sha256:")
         ):
             continue
+        if candidate.startswith(PUBLIC_IDENTIFIER_PREFIXES):
+            continue
+        public_kind_pattern = "|".join(sorted(PUBLIC_IDENTIFIER_KINDS))
         if (
-            re.search(r'"kind"\s*:\s*"drive_doc"', preceding_context)
+            re.search(
+                rf'"kind"\s*:\s*"(?:{public_kind_pattern})"',
+                preceding_context,
+            )
             and re.search(r'"id"\s*:\s*"\s*$', preceding_context)
         ):
             continue
