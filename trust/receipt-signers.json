@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "registry_id": "MADCAT-RECEIPT-SIGNERS-1",
+  "repository": "masait78-wq/-madcat-telegram-bridge.",
+  "algorithm": "Ed25519",
+  "keys": [],
+  "truth_boundary": "No production signer key is provisioned. Receipts fail closed until an Ed25519 public key is verified out of band and added by an authorized registry change. A valid signature proves possession of that key, not a human identity, account ownership, independent review, or correctness of the signed claim."
+}
