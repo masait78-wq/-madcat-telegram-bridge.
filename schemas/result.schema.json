@@ -25,7 +25,11 @@
     "protocol": {"const": "MADCAT-SHARED-BUS-1.0"},
     "result_id": {"type": "string", "pattern": "^[A-Z0-9-]+$"},
     "command_id": {"type": "string", "pattern": "^[A-Z0-9-]+$"},
-    "completed_at": {"type": "string", "format": "date-time"},
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
     "agent": {"const": "Grok"},
     "status": {"enum": ["completed", "partial", "blocked"]},
     "observed_command_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
