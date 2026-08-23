@@ -4,5 +4,5 @@
   "active_command": "TLV-CH01-RENDER-001",
   "active_command_hash": "sha256:294c31692402303ce28546ee9b64ab8440df5da3eab6e68fc18434e3dc08f648",
   "status": "paused",
-  "next": "No engine acts on this command while paused. Resume only through a later founder-approved command envelope and a fresh live usage check; no credits, generation, publication, or external action is authorized."
+  "next": "No engine acts on this historical command while paused. Receipt acceptance is disabled; replay_store is null; private control is retired_no_append; route and poller are not observable. Activation requires a current explicit founder decision, a founder-designated durable atomic replay store, a freshly verified current Grok Ed25519 key, and live route write/readback."
 }

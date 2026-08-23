@@ -68,6 +68,32 @@ STATE_FIELDS = {
     "status",
     "next",
 }
+ACCEPTANCE_POLICY_FIELDS = {
+    "schema_version",
+    "policy_id",
+    "receipt_acceptance",
+    "replay_store",
+    "in_memory_replay_fallback_allowed",
+    "private_control_mode",
+    "route_status",
+    "poller_status",
+    "resume_status",
+    "activation",
+    "truth_boundary",
+}
+ACTIVATION_FIELDS = {
+    "required_gates",
+    "current_explicit_founder_decision",
+    "founder_designated_durable_atomic_replay_store",
+    "current_grok_ed25519_key_verified",
+    "live_route_write_readback_verified",
+}
+REQUIRED_ACTIVATION_GATES = [
+    "current_explicit_founder_decision",
+    "founder_designated_durable_atomic_replay_store",
+    "current_grok_ed25519_key_verified",
+    "live_route_write_readback_verified",
+]
 SIGNER_REGISTRY_FIELDS = {
     "schema_version",
     "registry_id",
@@ -139,6 +165,20 @@ PUBLIC_IDENTIFIER_PREFIXES = (
 )
 ALLOWED_SUFFIXES = {".json", ".md", ".py", ".yml", ".yaml"}
 ALLOWED_FILENAMES = {"requirements.txt"}
+HISTORICAL_INBOX_FILES = {
+    "bus/inbox/MC-BUS-CANARY-001.json": {
+        "sha256": "44be7bc4e8d90a6595b05d63fd8b790385f77c0123c4f909c5759fcee4752456",
+        "git_blob": "f73d6412f6346e8dfee120eac7b711af24f503d8",
+    },
+    "bus/inbox/TLV-CH01-DRIVE-READ-001.json": {
+        "sha256": "373bd9fea26fc286398105f27b98fb16dd2866de40c52f2546845b10ab328c8c",
+        "git_blob": "d4eb7cc9c848c9f09a4bbfa100a2105c34df6823",
+    },
+    "bus/inbox/TLV-CH01-RENDER-001.json": {
+        "sha256": "a98d7e08fa4b90f23c8e61b2a46fd6878f3483b8f7da117a9abfe8e10908bb4e",
+        "git_blob": "1114e41b72ee648badbbd09fb4e30de64d2c1ec9",
+    },
+}
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -161,6 +201,105 @@ def canonical_json_bytes(value: Any) -> bytes:
 def canonical_hash(value: dict[str, Any], hash_field: str) -> str:
     payload = {key: item for key, item in value.items() if key != hash_field}
     return "sha256:" + hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
+
+
+def git_blob_hash(value: bytes) -> str:
+    """Return the content-addressed Git blob identity for exact byte pinning."""
+    header = f"blob {len(value)}\0".encode("ascii")
+    return hashlib.sha1(header + value, usedforsecurity=False).hexdigest()
+
+
+def historical_inbox_paths(root: Path, errors: list[str]) -> list[Path]:
+    """Enforce the exact inert inbox path set and exact historical bytes."""
+    inbox_root = root / "bus" / "inbox"
+    discovered: set[str] = set()
+    try:
+        entries = sorted(inbox_root.rglob("*"))
+    except OSError as exc:
+        errors.append(f"bus/inbox: unable to enumerate historical inbox: {exc}")
+        entries = []
+    for path in entries:
+        if path.is_file() or path.is_symlink():
+            discovered.add(path.relative_to(root).as_posix())
+
+    expected = set(HISTORICAL_INBOX_FILES)
+    for relative in sorted(expected - discovered):
+        errors.append(f"{relative}: pinned historical inbox file is missing")
+    for relative in sorted(discovered - expected):
+        errors.append(f"{relative}: unexpected historical inbox path")
+
+    paths: list[Path] = []
+    for relative in sorted(expected & discovered):
+        path = root / relative
+        if path.is_symlink() or not path.is_file():
+            errors.append(f"{relative}: historical inbox entry must be a regular file")
+            continue
+        try:
+            value = path.read_bytes()
+        except OSError as exc:
+            errors.append(f"{relative}: unable to read pinned historical bytes: {exc}")
+            continue
+        expected_digests = HISTORICAL_INBOX_FILES[relative]
+        if hashlib.sha256(value).hexdigest() != expected_digests["sha256"]:
+            errors.append(f"{relative}: pinned historical content SHA-256 mismatch")
+        if git_blob_hash(value) != expected_digests["git_blob"]:
+            errors.append(f"{relative}: pinned historical Git blob mismatch")
+        paths.append(path)
+    return paths
+
+
+def disabled_outbox_files(root: Path, errors: list[str]) -> list[Path]:
+    """Find files under case-insensitive bus/outbox roots without following links."""
+    try:
+        bus_roots = sorted(
+            path for path in root.iterdir() if path.name.casefold() == "bus"
+        )
+    except OSError as exc:
+        errors.append(f".: unable to enumerate case-insensitive bus paths: {exc}")
+        return []
+    paths: set[Path] = set()
+    for bus_root in bus_roots:
+        bus_relative = bus_root.relative_to(root).as_posix()
+        if bus_root.name != "bus":
+            errors.append(f"{bus_relative}: case-variant bus path is forbidden")
+        if bus_root.is_symlink():
+            errors.append(f"{bus_relative}: bus path symlinks are forbidden")
+            continue
+        if not bus_root.is_dir():
+            errors.append(f"{bus_relative}: bus path must be a directory")
+            continue
+        try:
+            outbox_roots = sorted(
+                path
+                for path in bus_root.iterdir()
+                if path.name.casefold() == "outbox"
+            )
+        except OSError as exc:
+            errors.append(f"{bus_relative}: unable to enumerate outbox paths: {exc}")
+            continue
+        for outbox_root in outbox_roots:
+            outbox_relative = outbox_root.relative_to(root).as_posix()
+            if outbox_root.name != "outbox":
+                errors.append(
+                    f"{outbox_relative}: case-variant outbox path is forbidden"
+                )
+            if outbox_root.is_symlink():
+                errors.append(f"{outbox_relative}: outbox path symlinks are forbidden")
+                continue
+            if not outbox_root.is_dir():
+                errors.append(f"{outbox_relative}: receipt_acceptance_disabled")
+                errors.append(f"{outbox_relative}: outbox path must be a directory")
+                continue
+            try:
+                entries = outbox_root.rglob("*")
+                paths.update(
+                    path for path in entries if path.is_file() or path.is_symlink()
+                )
+            except OSError as exc:
+                errors.append(
+                    f"{outbox_relative}: unable to enumerate disabled outbox: {exc}"
+                )
+    return sorted(paths)
 
 
 def receipt_signing_bytes(result: dict[str, Any]) -> bytes:
@@ -296,52 +435,49 @@ def signer_key_map(registry: dict[str, Any]) -> dict[str, dict[str, Any]]:
     }
 
 
-def empty_replay_state() -> dict[str, set[str]]:
-    return {
-        "result_ids": set(),
-        "command_ids": set(),
-        "signer_nonces": set(),
-        "signatures": set(),
+def acceptance_policy_errors(policy: dict[str, Any]) -> list[str]:
+    """Pin the current bus to an explicit non-accepting, non-resumable state."""
+    errors: list[str] = []
+    if set(policy) != ACCEPTANCE_POLICY_FIELDS:
+        errors.append("policy fields do not match the protocol")
+    expected = {
+        "schema_version": 1,
+        "policy_id": "MADCAT-SHARED-BUS-ACCEPTANCE-1",
+        "receipt_acceptance": "disabled",
+        "replay_store": None,
+        "in_memory_replay_fallback_allowed": False,
+        "private_control_mode": "retired_no_append",
+        "route_status": "not_observable",
+        "poller_status": "not_observable",
+        "resume_status": "paused",
     }
-
-
-def receipt_replay_claims(result: dict[str, Any]) -> dict[str, str]:
-    signature = result.get("signature")
-    if not isinstance(signature, dict):
-        signature = {}
-    key_id = signature.get("key_id")
-    nonce = result.get("nonce")
-    return {
-        "result_ids": result.get("result_id")
-        if isinstance(result.get("result_id"), str)
-        else "",
-        "command_ids": result.get("command_id")
-        if isinstance(result.get("command_id"), str)
-        else "",
-        "signer_nonces": f"{key_id}:{nonce}"
-        if isinstance(key_id, str) and isinstance(nonce, str)
-        else "",
-        "signatures": signature.get("value")
-        if isinstance(signature.get("value"), str)
-        else "",
+    for field, value in expected.items():
+        if policy.get(field) != value:
+            errors.append(f"{field} must remain {value!r}")
+    activation = policy.get("activation")
+    if not isinstance(activation, dict):
+        return errors + ["activation must be an object"]
+    if set(activation) != ACTIVATION_FIELDS:
+        errors.append("activation fields do not match the protocol")
+    if activation.get("required_gates") != REQUIRED_ACTIVATION_GATES:
+        errors.append("activation required_gates do not match the protocol")
+    observed = {
+        "current_explicit_founder_decision": False,
+        "founder_designated_durable_atomic_replay_store": None,
+        "current_grok_ed25519_key_verified": False,
+        "live_route_write_readback_verified": False,
     }
-
-
-def reserve_receipt_claims(
-    result: dict[str, Any],
-    replay_state: dict[str, set[str]],
-) -> None:
-    for bucket, claim in receipt_replay_claims(result).items():
-        if claim:
-            replay_state[bucket].add(claim)
+    for field, value in observed.items():
+        if activation.get(field) != value:
+            errors.append(f"activation {field} must remain {value!r}")
+    return errors
 
 
 def receipt_authentication_errors(
     result: dict[str, Any],
     registry: dict[str, Any],
-    replay_state: dict[str, set[str]] | None = None,
 ) -> list[str]:
-    """Verify signer trust, Ed25519 signature, key validity, and replay claims."""
+    """Cryptographically lint a receipt without granting acceptance authority."""
     if signer_registry_errors(registry):
         return ["signer_registry_invalid"]
     errors: list[str] = []
@@ -394,10 +530,6 @@ def receipt_authentication_errors(
         except (InvalidSignature, TypeError, ValueError):
             errors.append("receipt_signature_invalid")
 
-    if replay_state is not None:
-        for bucket, claim in receipt_replay_claims(result).items():
-            if claim and claim in replay_state[bucket]:
-                errors.append(f"{bucket[:-1]}_replayed")
     return errors
 
 
@@ -503,6 +635,29 @@ def validate_repository(root: Path = ROOT) -> list[str]:
     command_nonces: set[str] = set()
     allowed_public_crypto: set[str] = set()
 
+    policy_path = root / "config" / "acceptance-policy.json"
+    try:
+        policy = load_json(policy_path)
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        errors.append(f"config/acceptance-policy.json: {exc}")
+        policy = {}
+    try:
+        errors.extend(
+            schema_errors(
+                policy,
+                root / "schemas" / "acceptance-policy.schema.json",
+                "config/acceptance-policy.json",
+            )
+        )
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        errors.append(
+            f"config/acceptance-policy.json: schema validation unavailable: {exc}"
+        )
+    errors.extend(
+        f"config/acceptance-policy.json: {error}"
+        for error in acceptance_policy_errors(policy)
+    )
+
     registry_path = root / "trust" / "receipt-signers.json"
     try:
         registry = load_json(registry_path)
@@ -530,12 +685,16 @@ def validate_repository(root: Path = ROOT) -> list[str]:
         for key in registry.get("keys", []):
             if isinstance(key, dict) and isinstance(key.get("public_key"), str):
                 allowed_public_crypto.add(key["public_key"])
+    if policy.get("receipt_acceptance") == "disabled" and registry.get("keys") != []:
+        errors.append(
+            "trust/receipt-signers.json: signer registry must remain empty while receipt acceptance is disabled"
+        )
     for key_path in forbidden_key_paths(registry):
         errors.append(
             f"trust/receipt-signers.json: forbidden secret-bearing key {key_path}"
         )
 
-    for path in sorted((root / "bus" / "inbox").glob("*.json")):
+    for path in historical_inbox_paths(root, errors):
         relative = path.relative_to(root)
         try:
             command = load_json(path)
@@ -579,9 +738,14 @@ def validate_repository(root: Path = ROOT) -> list[str]:
         for key_path in forbidden_key_paths(command):
             errors.append(f"{relative}: forbidden secret-bearing key {key_path}")
 
-    replay_state = empty_replay_state()
-    for path in sorted((root / "bus" / "outbox").glob("*.json")):
+    for path in disabled_outbox_files(root, errors):
         relative = path.relative_to(root)
+        errors.append(f"{relative}: receipt_acceptance_disabled")
+        if path.is_symlink():
+            errors.append(f"{relative}: outbox symlinks are forbidden")
+            continue
+        if path.suffix.lower() != ".json":
+            continue
         try:
             result = load_json(path)
         except (OSError, json.JSONDecodeError, ValueError) as exc:
@@ -614,11 +778,7 @@ def validate_repository(root: Path = ROOT) -> list[str]:
                 errors.append(f"{relative}: observed command hash mismatch")
             if result.get("nonce") != command.get("nonce"):
                 errors.append(f"{relative}: nonce mismatch")
-        authentication_errors = receipt_authentication_errors(
-            result,
-            registry,
-            replay_state,
-        )
+        authentication_errors = receipt_authentication_errors(result, registry)
         errors.extend(
             f"{relative}: {error}" for error in authentication_errors
         )
@@ -628,7 +788,6 @@ def validate_repository(root: Path = ROOT) -> list[str]:
                 signature.get("value"), str
             ):
                 allowed_public_crypto.add(signature["value"])
-        reserve_receipt_claims(result, replay_state)
         for key_path in forbidden_key_paths(result):
             errors.append(f"{relative}: forbidden secret-bearing key {key_path}")
 
@@ -650,6 +809,10 @@ def validate_repository(root: Path = ROOT) -> list[str]:
         errors.append(f"bus/state/current.json: schema validation unavailable: {exc}")
     if set(state) != STATE_FIELDS:
         errors.append("bus/state/current.json: fields do not match the protocol")
+    if policy.get("receipt_acceptance") == "disabled" and state.get("status") != "paused":
+        errors.append(
+            "bus/state/current.json: status must remain paused while receipt acceptance is disabled"
+        )
     active = commands.get(state.get("active_command"))
     if active is None:
         errors.append("bus/state/current.json: active_command does not resolve")

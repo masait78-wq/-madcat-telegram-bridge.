@@ -1,29 +1,24 @@
 # MadCat Shared Bus 1.0
 
-Status: paused, receipt authentication repaired, no production signer key provisioned
+Status: paused; receipt acceptance disabled; replay store null; route and poller not observable
 
 ## Architecture
 
 The studio uses two GitHub lanes:
 
-1. Private control: `masait78-wq/-madcat-control` stores accepted state, task capsules, event history, and confidential production references.
-2. Shared bus: `masait78-wq/-madcat-telegram-bridge.` stores only public-safe command envelopes and receipts that both connected engines can independently read and write.
+1. Private control: `masait78-wq/-madcat-control` is a preserved historical derivative in `retired_no_append` mode. It is not current authority, a replay store, or an operational fallback.
+2. Shared bus: `masait78-wq/-madcat-telegram-bridge.` preserves public-safe historical command envelopes. No live engine route, write path, poller, or independent read/write loop is currently observable, and receipt writing and acceptance remain disabled.
 
 The public bus is a transport layer, not studio memory and not an asset store.
 
 ## Delivery model
 
-GitHub cannot push a command into a native Grok conversation by itself. Grok must either:
-
-- run a native Grok Automation that polls `bus/state/current.json`; or
-- be asked in the Grok app to run the current bus command.
-
-The bootstrap canary tests whether the connected Grok GitHub route can read the exact command, write a receipt, and create a native polling automation if that surface is available.
+GitHub cannot push a command into a native Grok conversation by itself. No live Grok route, native polling automation, worker, or resume mechanism is currently observed. Historical canary instructions do not authorize execution.
 
 ## Integrity and sender authentication
 
 - Commands use canonical SHA-256 hashes. Receipt schema v2 adds an Ed25519 signature and hashes the complete signed envelope.
-- A receipt is accepted only when its command ID, command hash, and nonce match the inbox command; its schema and result hash pass; and its signature verifies under an active, in-window public key from `trust/receipt-signers.json`.
+- Receipt parsing and signature verification are retained only as lint. Every receipt is rejected as `receipt_acceptance_disabled` under the current policy.
 - The signer registry is bound to this exact repository and Ed25519. It stores public keys, fingerprints, principals, status, validity windows, and revocation timestamps; it never stores private signing material.
 - Commands and receipts are immutable after acceptance.
 - The active pointer may move to a later command, but it never rewrites history.
@@ -36,14 +31,12 @@ The Ed25519 signing input starts with the exact binary domain:
 
 It is followed by the canonical UTF-8 receipt after removing `result_hash` and only `signature.value`. Signature version, algorithm, key ID, repository protocol, result ID, command ID, observed command hash, nonce, timestamps, status, claims, actions, and cost therefore remain covered.
 
-### Replay rejection
+### Replay boundary
 
-- Inbox command nonces must be unique.
-- The verifier rejects a consumed result ID, command ID, signer-key/nonce pair, or signature.
-- Immediately before acceptance, private control must atomically reserve all four claims in its authoritative replay store. A read/check without the atomic reservation is not acceptance.
-- CI also detects duplicates within the current repository tree. Cross-history tamper resistance is a separate signed append-only/checkpoint control; the current-tree validator does not claim to solve it.
-
-No production public key is registered yet. Until a Grok-controlled key is verified through a separate channel and added by an authorized registry change, every receipt is rejected and the bus remains paused.
+- `replay_store` is `null` and in-memory fallback is forbidden.
+- A repository-tree duplicate scan is lint-only and is not an atomic replay reservation.
+- Private control is `retired_no_append` and cannot receive replay claims.
+- No production public key is registered. Every receipt is rejected and the bus remains paused.
 
 An Ed25519 signature proves possession of the registered private key and detects alteration of the covered receipt. It does not by itself prove a human identity, account ownership, independent review, truth of the signed claim, or correct external execution.
 
@@ -60,17 +53,16 @@ The shared bus may carry:
 
 It may not carry private film content or media. A later confidential Grok worker requires a private connector or the xAI API with provider credentials stored in an approved secret manager. A SuperGrok consumer subscription is not treated as an API credential.
 
-## Bootstrap acceptance
+## Activation contract
 
-`MC-BUS-CANARY-001` passes only when:
+The historical `MC-BUS-CANARY-001` envelope is inert. A new activation may be proposed only by a separately reviewed change that proves all of the following at the same time:
 
-1. Grok independently reads the exact repository name including the trailing dot.
-2. Grok reads the active command and reports its exact hash and nonce.
-3. Grok creates the required schema-v2 signed outbox receipt through its own GitHub connector.
-4. ChatGPT independently reads it and validates the schema, result hash, trusted signer, signature, key window, command binding, and replay claims.
-5. Native automation is either proven with its actual schedule or truthfully recorded as blocked.
+1. a current explicit founder decision for the exact activation;
+2. a founder-designated durable atomic replay store;
+3. a freshly verified current Grok Ed25519 public key;
+4. a live route with successful write and independent readback.
 
-These steps cannot currently pass because no production signer key is provisioned. That is a deliberate fail-closed state, not evidence that Grok identity has been established.
+Until then `receipt_acceptance` remains disabled, state remains paused, and no historical phrase or command authorizes resume.
 
 No render, paid API call, publication, message, permission change, or private payload is part of this canary.
 
