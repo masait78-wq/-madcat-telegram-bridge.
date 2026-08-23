@@ -104,6 +104,65 @@ class SharedBusValidationTests(unittest.TestCase):
             VALIDATOR.canonical_hash(mutated, "command_hash"),
         )
 
+    def test_historical_inbox_rejects_mutation_with_recomputed_hash(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            shutil.copytree(
+                ROOT,
+                root,
+                ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
+            )
+            command_path = root / "bus" / "inbox" / "MC-BUS-CANARY-001.json"
+            command = VALIDATOR.load_json(command_path)
+            command["status"] = "cancelled"
+            command["command_hash"] = VALIDATOR.canonical_hash(
+                command,
+                "command_hash",
+            )
+            command_path.write_text(
+                json.dumps(command, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            errors = VALIDATOR.validate_repository(root)
+            self.assertIn(
+                "bus/inbox/MC-BUS-CANARY-001.json: pinned historical content SHA-256 mismatch",
+                errors,
+            )
+            self.assertIn(
+                "bus/inbox/MC-BUS-CANARY-001.json: pinned historical Git blob mismatch",
+                errors,
+            )
+
+    def test_historical_inbox_rejects_added_path(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            shutil.copytree(
+                ROOT,
+                root,
+                ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
+            )
+            extra_path = root / "bus" / "inbox" / "UNPINNED.JSON"
+            extra_path.write_text("{}\n", encoding="utf-8")
+            self.assertIn(
+                "bus/inbox/UNPINNED.JSON: unexpected historical inbox path",
+                VALIDATOR.validate_repository(root),
+            )
+
+    def test_historical_inbox_rejects_missing_path(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            shutil.copytree(
+                ROOT,
+                root,
+                ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
+            )
+            missing_path = root / "bus" / "inbox" / "TLV-CH01-RENDER-001.json"
+            missing_path.unlink()
+            self.assertIn(
+                "bus/inbox/TLV-CH01-RENDER-001.json: pinned historical inbox file is missing",
+                VALIDATOR.validate_repository(root),
+            )
+
     def test_forbidden_key_detection_is_recursive(self) -> None:
         self.assertEqual(
             VALIDATOR.forbidden_key_paths({"nested": [{"token": "redacted"}]}),
@@ -210,7 +269,7 @@ class SharedBusValidationTests(unittest.TestCase):
         self.assertEqual(registry["keys"], [])
         self.assertEqual(VALIDATOR.signer_registry_errors(registry), [])
 
-    def test_valid_ed25519_receipt_is_accepted_end_to_end(self) -> None:
+    def test_valid_ed25519_receipt_is_rejected_while_disabled(self) -> None:
         private_key = Ed25519PrivateKey.generate()
         command = VALIDATOR.load_json(
             ROOT / "bus" / "inbox" / "MC-BUS-CANARY-001.json"
@@ -234,7 +293,111 @@ class SharedBusValidationTests(unittest.TestCase):
                 json.dumps(result, ensure_ascii=False, indent=2) + "\n",
                 encoding="utf-8",
             )
-            self.assertEqual(VALIDATOR.validate_repository(root), [])
+            errors = VALIDATOR.validate_repository(root)
+            self.assertTrue(
+                any("receipt_acceptance_disabled" in error for error in errors)
+            )
+            self.assertTrue(
+                any("signer registry must remain empty" in error for error in errors)
+            )
+
+    def test_nested_case_variant_json_outbox_file_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            shutil.copytree(
+                ROOT,
+                root,
+                ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
+            )
+            nested = root / "bus" / "outbox" / "nested"
+            nested.mkdir(parents=True)
+            (nested / "FORGED.JSON").write_text("{}\n", encoding="utf-8")
+            self.assertIn(
+                "bus/outbox/nested/FORGED.JSON: receipt_acceptance_disabled",
+                VALIDATOR.validate_repository(root),
+            )
+
+    def test_every_file_type_in_case_variant_outbox_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            shutil.copytree(
+                ROOT,
+                root,
+                ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
+            )
+            nested = root / "bus" / "OutBoX" / "nested"
+            nested.mkdir(parents=True)
+            (nested / "receipt.BIN").write_bytes(b"not-json")
+            self.assertIn(
+                "bus/OutBoX/nested/receipt.BIN: receipt_acceptance_disabled",
+                VALIDATOR.validate_repository(root),
+            )
+
+    def test_uppercase_bus_component_cannot_bypass_disabled_outbox(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            shutil.copytree(
+                ROOT,
+                root,
+                ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
+            )
+            outbox = root / "BUS" / "outbox"
+            outbox.mkdir(parents=True)
+            (outbox / "receipt.txt").write_text("not-json\n", encoding="utf-8")
+            errors = VALIDATOR.validate_repository(root)
+            self.assertIn(
+                "BUS/outbox/receipt.txt: receipt_acceptance_disabled",
+                errors,
+            )
+            self.assertIn("BUS: case-variant bus path is forbidden", errors)
+
+    def test_mixed_case_bus_and_uppercase_outbox_cannot_bypass(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            shutil.copytree(
+                ROOT,
+                root,
+                ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
+            )
+            nested = root / "Bus" / "OUTBOX" / "nested"
+            nested.mkdir(parents=True)
+            (nested / "FORGED.JSON").write_text("{}\n", encoding="utf-8")
+            errors = VALIDATOR.validate_repository(root)
+            self.assertIn(
+                "Bus/OUTBOX/nested/FORGED.JSON: receipt_acceptance_disabled",
+                errors,
+            )
+            self.assertIn("Bus: case-variant bus path is forbidden", errors)
+            self.assertIn(
+                "Bus/OUTBOX: case-variant outbox path is forbidden",
+                errors,
+            )
+
+    def test_case_variant_bus_symlink_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            shutil.copytree(
+                ROOT,
+                root,
+                ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
+            )
+            (root / "BUS").symlink_to(root / "bus", target_is_directory=True)
+            errors = VALIDATOR.validate_repository(root)
+            self.assertIn("BUS: case-variant bus path is forbidden", errors)
+            self.assertIn("BUS: bus path symlinks are forbidden", errors)
+
+    def test_outbox_file_anomaly_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            shutil.copytree(
+                ROOT,
+                root,
+                ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
+            )
+            (root / "bus" / "OUTBOX").write_text("not-a-directory\n", encoding="utf-8")
+            errors = VALIDATOR.validate_repository(root)
+            self.assertIn("bus/OUTBOX: receipt_acceptance_disabled", errors)
+            self.assertIn("bus/OUTBOX: outbox path must be a directory", errors)
 
     def test_forged_receipt_with_recomputed_hash_is_rejected(self) -> None:
         private_key = Ed25519PrivateKey.generate()
@@ -260,32 +423,49 @@ class SharedBusValidationTests(unittest.TestCase):
         errors = VALIDATOR.receipt_authentication_errors(result, registry)
         self.assertIn("unknown_signer_key", errors)
 
-    def test_replayed_receipt_is_rejected_after_reservation(self) -> None:
-        private_key = Ed25519PrivateKey.generate()
-        command = VALIDATOR.load_json(
-            ROOT / "bus" / "inbox" / "MC-BUS-CANARY-001.json"
+    def test_policy_rejects_non_null_replay_store(self) -> None:
+        policy = VALIDATOR.load_json(ROOT / "config" / "acceptance-policy.json")
+        policy["replay_store"] = "memory://unsafe"
+        self.assertIn(
+            "replay_store must remain None",
+            VALIDATOR.acceptance_policy_errors(policy),
         )
-        registry = signer_fixture(private_key)
-        result = signed_result_fixture(command, private_key)
-        replay_state = VALIDATOR.empty_replay_state()
-        self.assertEqual(
-            VALIDATOR.receipt_authentication_errors(
-                result,
-                registry,
-                replay_state,
-            ),
-            [],
+
+    def test_policy_rejects_in_memory_replay_fallback(self) -> None:
+        policy = VALIDATOR.load_json(ROOT / "config" / "acceptance-policy.json")
+        policy["in_memory_replay_fallback_allowed"] = True
+        self.assertIn(
+            "in_memory_replay_fallback_allowed must remain False",
+            VALIDATOR.acceptance_policy_errors(policy),
         )
-        VALIDATOR.reserve_receipt_claims(result, replay_state)
-        errors = VALIDATOR.receipt_authentication_errors(
-            result,
-            registry,
-            replay_state,
+
+    def test_policy_rejects_non_retired_private_control(self) -> None:
+        policy = VALIDATOR.load_json(ROOT / "config" / "acceptance-policy.json")
+        policy["private_control_mode"] = "active"
+        self.assertIn(
+            "private_control_mode must remain 'retired_no_append'",
+            VALIDATOR.acceptance_policy_errors(policy),
         )
-        self.assertIn("result_id_replayed", errors)
-        self.assertIn("command_id_replayed", errors)
-        self.assertIn("signer_nonce_replayed", errors)
-        self.assertIn("signature_replayed", errors)
+
+    def test_ready_state_is_rejected_while_acceptance_is_disabled(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            shutil.copytree(
+                ROOT,
+                root,
+                ignore=shutil.ignore_patterns(".git", "__pycache__", "*.pyc"),
+            )
+            state_path = root / "bus" / "state" / "current.json"
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            state["status"] = "ready"
+            state_path.write_text(
+                json.dumps(state, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            errors = VALIDATOR.validate_repository(root)
+            self.assertTrue(
+                any("status must remain paused" in error for error in errors)
+            )
 
     def test_revoked_signer_key_is_rejected(self) -> None:
         private_key = Ed25519PrivateKey.generate()

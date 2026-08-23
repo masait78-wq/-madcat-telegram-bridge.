@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "policy_id": "MADCAT-SHARED-BUS-ACCEPTANCE-1",
+  "receipt_acceptance": "disabled",
+  "replay_store": null,
+  "in_memory_replay_fallback_allowed": false,
+  "private_control_mode": "retired_no_append",
+  "route_status": "not_observable",
+  "poller_status": "not_observable",
+  "resume_status": "paused",
+  "activation": {
+    "required_gates": [
+      "current_explicit_founder_decision",
+      "founder_designated_durable_atomic_replay_store",
+      "current_grok_ed25519_key_verified",
+      "live_route_write_readback_verified"
+    ],
+    "current_explicit_founder_decision": false,
+    "founder_designated_durable_atomic_replay_store": null,
+    "current_grok_ed25519_key_verified": false,
+    "live_route_write_readback_verified": false
+  },
+  "truth_boundary": "Receipt acceptance is disabled. No replay store, signer key, live route, poller, or resume authority is currently observed. Historical inbox files are inert while the active state is paused."
+}

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://madcat.studio/schemas/shared-bus-acceptance-policy.schema.json",
+  "title": "MadCat shared bus fail-closed acceptance policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_id",
+    "receipt_acceptance",
+    "replay_store",
+    "in_memory_replay_fallback_allowed",
+    "private_control_mode",
+    "route_status",
+    "poller_status",
+    "resume_status",
+    "activation",
+    "truth_boundary"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "policy_id": {"const": "MADCAT-SHARED-BUS-ACCEPTANCE-1"},
+    "receipt_acceptance": {"const": "disabled"},
+    "replay_store": {"type": "null"},
+    "in_memory_replay_fallback_allowed": {"const": false},
+    "private_control_mode": {"const": "retired_no_append"},
+    "route_status": {"const": "not_observable"},
+    "poller_status": {"const": "not_observable"},
+    "resume_status": {"const": "paused"},
+    "activation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required_gates",
+        "current_explicit_founder_decision",
+        "founder_designated_durable_atomic_replay_store",
+        "current_grok_ed25519_key_verified",
+        "live_route_write_readback_verified"
+      ],
+      "properties": {
+        "required_gates": {
+          "const": [
+            "current_explicit_founder_decision",
+            "founder_designated_durable_atomic_replay_store",
+            "current_grok_ed25519_key_verified",
+            "live_route_write_readback_verified"
+          ]
+        },
+        "current_explicit_founder_decision": {"const": false},
+        "founder_designated_durable_atomic_replay_store": {"type": "null"},
+        "current_grok_ed25519_key_verified": {"const": false},
+        "live_route_write_readback_verified": {"const": false}
+      }
+    },
+    "truth_boundary": {"type": "string", "minLength": 1}
+  }
+}

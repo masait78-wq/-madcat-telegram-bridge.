@@ -2,13 +2,13 @@
 
 These rules apply to the whole repository.
 
-## Roles
+## Current roles
 
-- `ChatGPT` owns `bus/inbox/` and `bus/state/current.json`.
-- `Grok` reads the active inbox command and owns its matching signed file under `bus/outbox/`.
-- Neither engine edits or deletes an accepted command or receipt.
+- Existing inbox commands are immutable historical records and inert while paused.
+- No engine currently owns an operational outbox, poller, worker, router, or resume path.
 - Every direct GitHub read or write claim must cite evidence returned by that engine's own connector.
-- A receipt claiming `agent: Grok` is not trusted by name alone. It must verify under an active Ed25519 key in `trust/receipt-signers.json`.
+- Every receipt is rejected while `receipt_acceptance` is disabled, including a cryptographically valid receipt.
+- `masait78-wq/-madcat-control` is `retired_no_append`; never use it as replay storage or fallback authority.
 
 ## Public safety boundary
 
@@ -18,27 +18,26 @@ This repository is public. Never place any of the following here:
 - private film scripts, storyboards, prompts, source media, client material, personal data, or unpublished strategy;
 - a render request that may consume credits without a separate exact founder approval.
 
-Only `public_control_only` envelopes are allowed. Private production material stays in `masait78-wq/-madcat-control` and approved private asset storage.
+Only `public_control_only` envelopes are allowed. If work requires private production material, stop: never place or append it here or in the `retired_no_append` repository `masait78-wq/-madcat-control`. Continue only through separately approved private asset storage or a private connector after explicit authorization.
 
-## Command handling
+## Paused handling
 
-1. Read `bus/state/current.json`.
-2. Read the named command under `bus/inbox/`.
-3. Verify its `command_hash` and `nonce`.
-4. Perform only the listed non-sensitive action.
-5. Write exactly one schema-v2 receipt to the required `bus/outbox/` path and sign the domain-separated canonical receipt payload with the registered Ed25519 key.
-6. Preserve `command_id`, `observed_command_hash`, and `nonce` exactly.
-7. Never place the private signing key in this repository, a receipt, a log, a test fixture, or chat.
-8. Report unsupported native automation as `blocked`; never imitate success.
+1. Read `config/acceptance-policy.json` and `bus/state/current.json`.
+2. When receipt acceptance is disabled or state is paused, do not execute an inbox command and do not write an outbox receipt.
+3. Preserve historical commands, hashes, nonces, events, and receipts byte-for-byte.
+4. Never treat an in-process set, repository scan, or private-control ledger as a durable atomic replay store.
+5. Never place a private signing key in this repository, a receipt, a log, a test fixture, or chat.
+6. Report route, poller, worker, or resume capability as `not_observable` unless current write-and-readback evidence proves it.
 
-Before accepting a receipt, the verifier must validate its schema and hash, load the trusted key registry, verify the signature and key validity window, compare the command binding, and reject a previously consumed result ID, command ID, signer-key/nonce pair, or signature. The accepting private-control transaction must atomically reserve all four replay claims before recording success. A check followed by a later non-atomic write is not acceptance.
-
-No production signer key is currently provisioned, so the bus remains fail-closed and paused. Key onboarding requires an out-of-band fingerprint check and an authorized registry change; never invent or self-assert a Grok key.
+Activation requires all four gates listed in the acceptance policy: a current explicit founder decision, a founder-designated durable atomic replay store, a freshly verified current Grok Ed25519 key, and live route write/readback. An authorized change must update the policy and validator together; never infer activation from historical content.
 
 ## Hard stops
 
 - Never modify another engine's mailbox file.
 - Never accept an unsigned, unknown-key, revoked-key, expired-key, forged, or replayed receipt.
+- Never accept any receipt while `receipt_acceptance` is disabled.
+- Never use in-memory replay state as an acceptance control.
+- Never append to or fall back to `masait78-wq/-madcat-control`.
 - Never publish private payloads to make the bridge convenient.
 - Never claim that a native Grok automation exists until Grok returns its actual schedule or an explicit unsupported result.
 - Never generate media, spend credits, publish, send messages, change permissions, or perform destructive actions from the bootstrap canary.

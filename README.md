@@ -4,21 +4,36 @@ Public, non-secret command mailbox shared by ChatGPT and Grok.
 
 Repository identity: `masait78-wq/-madcat-telegram-bridge.`
 
-## Purpose
+## Current operational state
 
-- ChatGPT writes bounded control commands under `bus/inbox/`.
-- `bus/state/current.json` points to the one active command.
-- Grok reads the active command through its connected GitHub route.
-- Grok writes one immutable schema-v2 Ed25519-signed receipt under `bus/outbox/`.
-- ChatGPT verifies the schema, hash, command binding, trusted signer key, signature, key window, and replay state before recording an accepted result in the private control repository.
+The bus is **paused and receipt acceptance is disabled**. Files already under `bus/inbox/` are preserved historical envelopes; the active pointer does not authorize an engine to execute them. There is no observed live route, poller, worker, or resume mechanism.
 
-The production signer registry currently contains no active key. This is intentional: the bus is paused and fails closed until a Grok-controlled Ed25519 public key is verified out of band and added through an authorized registry change. No private signing material belongs in this public repository.
+`config/acceptance-policy.json` is the machine-readable boundary:
+
+- `receipt_acceptance = disabled`;
+- `replay_store = null`;
+- in-memory replay fallback is forbidden;
+- private control is `retired_no_append`;
+- the route and poller are `not_observable`, and resume is `paused`.
+
+The production signer registry is empty. No private signing material belongs in this public repository.
 
 ## Public boundary
 
 This repository is public. It must never contain scripts, storyboards, private canon, source media, client data, credentials, private connector output, unpublished strategy, or paid-generation payloads.
 
-The shared bus carries only non-sensitive command envelopes, hashes, nonces, public verification keys, and signed receipts. The private source of truth and authoritative replay reservation remain in `masait78-wq/-madcat-control`.
+The shared bus may retain only non-sensitive historical command envelopes, hashes, nonces, and public verification material. `masait78-wq/-madcat-control` is a historical derivative in `retired_no_append` mode; it is not a replay store, current authority, or operational fallback.
+
+## Activation gates
+
+Receipt acceptance must remain disabled unless a new, separately reviewed change proves all four gates together:
+
+1. a current explicit founder decision for the exact activation;
+2. a founder-designated durable atomic replay store;
+3. a freshly verified current Grok Ed25519 public key;
+4. a live route with both write and readback evidence.
+
+No older command, phrase trigger, canary, receipt, or private-control ledger entry satisfies these gates.
 
 ## Validate
 
@@ -27,4 +42,4 @@ python scripts/validate_bus.py
 python -m unittest discover -s tests -v
 ```
 
-Validation is fail-closed. A future receipt must use `schemas/result.schema.json`, verify under `trust/receipt-signers.json`, and present replay claims not already atomically reserved by the accepting private-control transaction.
+Validation is fail-closed. Any outbox receipt is rejected as `receipt_acceptance_disabled`; cryptographic receipt code is lint-only and grants no acceptance authority.
