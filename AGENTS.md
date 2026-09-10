@@ -18,7 +18,7 @@ This repository is public. Never place any of the following here:
 - private film scripts, storyboards, prompts, source media, client material, personal data, or unpublished strategy;
 - a render request that may consume credits without a separate exact founder approval.
 
-Only `public_control_only` envelopes are allowed. Private production material stays in `masait78-wq/-madcat-control` and approved private asset storage.
+Only `public_control_only` envelopes are allowed. `masait78-wq/-madcat-control` is a historical ledger with no current operational authority. Private production material requires separately established current task and storage authority; this paused bus does not grant it.
 
 ## Command handling
 
